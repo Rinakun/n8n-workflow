@@ -1,0 +1,49 @@
+{
+  "updatedAt": "2026-09-01T06:07:08.155Z",
+  "createdAt": "2026-09-01T06:07:08.155Z",
+  "id": "SJLSwwNZfSZDlq7F",
+  "name": "Rangkum",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "2d37e0d5-5577-435d-9e72-3a63d6f81e25",
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-09-01T06:07:08.155Z",
+      "createdAt": "2026-09-01T06:07:08.155Z",
+      "role": "workflow:owner",
+      "workflowId": "SJLSwwNZfSZDlq7F",
+      "projectId": "iuSJ1cN9aQjYBNiA",
+      "project": {
+        "updatedAt": "2026-08-26T17:54:19.818Z",
+        "createdAt": "2026-08-26T17:52:06.798Z",
+        "id": "iuSJ1cN9aQjYBNiA",
+        "name": "rinakun rinakun <ridhwannadif685@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "d6c6facd-21ab-49b1-af80-61c4c8601347"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

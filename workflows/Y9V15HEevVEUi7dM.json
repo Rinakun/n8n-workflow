@@ -1,0 +1,180 @@
+{
+  "updatedAt": "2026-09-01T05:47:27.484Z",
+  "createdAt": "2026-08-26T18:00:49.698Z",
+  "id": "Y9V15HEevVEUi7dM",
+  "name": "Utama",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wazuh-alert",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c0bac658-a383-45f5-a714-961b04f8970e",
+      "name": "Webhook",
+      "webhookId": "ab4a4b00-e049-43bb-81b1-b161d23f5421"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "2d60ed02-fdab-4385-98e2-3bdc99b06d86",
+              "leftValue": true,
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ [31151, 31101, 5710, 5503, 5712, 5551, 5763].includes(Number($json.body.rule.id)) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "8ee55d8a-40cf-4a0e-9efe-21da9c5cbe49",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=🚨 **Wazuh Alert: {{ $json.rule.description }}**\n\n**Time:** {{ $json.alert.timestamp }}\n**Level:** {{ $json.rule.level }}\n**Agent:** {{ $json.agent.name }}\n**Rule ID:** {{ $json.rule.id }}\n\n💀 **Attacker Info**\n**IP:** {{ $json.attack.src_ip }}\n**Target User:** {{ $json.attack.dst_user }}\n\n🛡️ **MITRE:** {{ $json.attack.mitre.tactic }} - {{ $json.attack.mitre.technique }} ({{$json.attack.mitre.technique_id }})\n\n📝 **Raw Log:**\n```text\n{{ $json.full_log }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -48
+      ],
+      "id": "7e1fb89a-d151-4dee-bbee-b7061b6e3a58",
+      "name": "Discord",
+      "webhookId": "88989520-9d77-4618-9b16-9297fc41786c",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "plFiSzHaqByC3U44",
+          "name": "alert-high"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"alert\": {\n    \"timestamp\": \"{{ $json.body.timestamp }}\",\n    \"id\": \"{{ $json.body.id }}\"\n  },\n  \"agent\": {\n    \"id\": \"{{ $json.body.agent.id }}\",\n    \"name\": \"{{ $json.body.agent.name }}\",\n    \"ip\": \"{{ $json.body.agent.ip }}\"\n  },\n  \"manager\": {\n    \"name\": \"{{ $json.body.manager.name }}\"\n  },\n  \"rule\": {\n    \"id\": \"{{ $json.body.rule.id }}\",\n    \"level\": \"{{ $json.body.rule.level }}\",\n    \"description\": \"{{ $json.body.rule.description }}\"\n  },\n  \"attack\": {\n    \"src_ip\": \"{{ $json.body.data.srcip }}\",\n    \"dst_user\": \"{{ $json.body.data.dstuser }}\",\n    \"mitre\": {\n      \"tactic\": \"{{ $json.body.rule.mitre.tactic[0] }}\",\n      \"technique\": \"{{ $json.body.rule.mitre.technique[0] }}\",\n      \"technique_id\": \"{{ $json.body.rule.mitre.id[0] }}\"\n    }\n  },\n  \"full_log\": \"{{ $json.body.full_log }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        432,
+        -80
+      ],
+      "id": "70b2c9f9-8055-4e61-9ee0-3674f3b65e13",
+      "name": "Edit Fields",
+      "alwaysOutputData": true
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "2807c0f2-6a6a-4625-8d31-55f522afc28b",
+  "activeVersionId": "95b743a9-aec5-4594-b3d5-304cca6456f1",
+  "versionCounter": 32,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-08-26T18:00:49.698Z",
+      "createdAt": "2026-08-26T18:00:49.698Z",
+      "role": "workflow:owner",
+      "workflowId": "Y9V15HEevVEUi7dM",
+      "projectId": "iuSJ1cN9aQjYBNiA",
+      "project": {
+        "updatedAt": "2026-08-26T17:54:19.818Z",
+        "createdAt": "2026-08-26T17:52:06.798Z",
+        "id": "iuSJ1cN9aQjYBNiA",
+        "name": "rinakun rinakun <ridhwannadif685@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "d6c6facd-21ab-49b1-af80-61c4c8601347"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

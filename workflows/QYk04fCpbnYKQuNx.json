@@ -1,0 +1,136 @@
+{
+  "updatedAt": "2026-09-01T07:34:21.625Z",
+  "createdAt": "2026-08-31T12:23:04.507Z",
+  "id": "QYk04fCpbnYKQuNx",
+  "name": "AR",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wazuh-ar",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c5f3f405-d630-4fb3-ba31-2043f1055de8",
+      "name": "Webhook",
+      "webhookId": "528a73db-d0fe-4519-bc32-72f7adad0061"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "51b424b8-d11f-43b5-af5d-94b128ed9463",
+              "name": "content",
+              "value": "=🚨 **WAZUH SECURITY ALERT** 🚨\n\n**Action Taken:** {{ $json.body.rule.description }}\n**Trigger Reason:** {{ $json.body.data.parameters.alert.rule.description }}\n**Severity Level:** {{ $json.body.data.parameters.alert.rule.level }} 🔴\n\n**🎯 Target Details:**\n* **Agent:** {{ $json.body.agent.name }}\n* **IP Address:** `{{ $json.body.agent.ip }}`\n* **Target URL:** `{{ $json.body.data.parameters.alert.data.url }}`\n\n**🦹 Attacker Details:**\n* **Attacker IP:** `{{ $json.body.data.parameters.alert.data.srcip }}`\n* **Time:** {{ $json.body.timestamp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        288,
+        -32
+      ],
+      "id": "6d1221d4-a492-4857-99ad-46dd2c8c7fef",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "={{ $json.content }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        496,
+        -16
+      ],
+      "id": "c324c0f3-2c85-43b9-8115-60180f7e3978",
+      "name": "Discord",
+      "webhookId": "3b16052e-a4c0-493b-8c54-11ac2133e503",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "B9RLGtCiBJfNK6m0",
+          "name": "AR-alert"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "182adf14-916d-4647-86f8-55defe0f1e2c",
+  "activeVersionId": "93285868-707c-4378-8de5-1c0b25f25fa0",
+  "versionCounter": 19,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-08-31T12:23:04.507Z",
+      "createdAt": "2026-08-31T12:23:04.507Z",
+      "role": "workflow:owner",
+      "workflowId": "QYk04fCpbnYKQuNx",
+      "projectId": "iuSJ1cN9aQjYBNiA",
+      "project": {
+        "updatedAt": "2026-08-26T17:54:19.818Z",
+        "createdAt": "2026-08-26T17:52:06.798Z",
+        "id": "iuSJ1cN9aQjYBNiA",
+        "name": "rinakun rinakun <ridhwannadif685@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "d6c6facd-21ab-49b1-af80-61c4c8601347"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

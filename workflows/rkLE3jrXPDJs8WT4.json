@@ -1,0 +1,446 @@
+{
+  "updatedAt": "2026-09-03T12:41:07.475Z",
+  "createdAt": "2026-09-03T11:41:55.388Z",
+  "id": "rkLE3jrXPDJs8WT4",
+  "name": "Telegram - Google Tasks & Google Calendar Bot",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "eee09a7a-c9bd-4458-a3b0-ef3448c287fc",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -784,
+        48
+      ],
+      "webhookId": "836b29e8-4bf2-45c6-b399-cedef6cc1cfa",
+      "credentials": {
+        "telegramApi": {
+          "id": "g7vGom9p6RZTh9Zz",
+          "name": "rinakunbot_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analisis pesan berikut dan ubah HANYA menjadi JSON:\n\"{{ $json.message.text }}\"\n\nATURAN KLASIFIKASI:\n1. Jika mengandung rencana belanja, to-do, beli sesuatu, atau tugas (misal ada kata 'beli', 'task', 'ingatkan'):\n{\"type\": \"task\", \"title\": \"Nama Tugas\", \"notes\": \"Catatan detail\", \"dueDate\": null}\n\n2. Jika mengandung jadwal, tanggal, jam, acara, meeting, atau kegiatan:\n{\"type\": \"calendar\", \"title\": \"Nama Acara\", \"description\": \"\", \"startTime\": \"Format ISO 8601\", \"endTime\": \"Format ISO 8601\", \"attendees\": []}\n\n3. Jika murni sapaan atau percakapan biasa:\n{\"type\": \"general\", \"reply\": \"Jawaban sapaan\"}\n\nKeluarkan HANYA JSON MURNI TANPA PENJELASAN LAIN.",
+        "messages": {
+          "messageValues": []
+        }
+      },
+      "id": "6e1960ec-374f-414a-9df6-38530a1d3a82",
+      "name": "AI Intent Extractor",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -544,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "ai-agent",
+          "mode": "list",
+          "cachedResultName": "ai-agent"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "22f3171e-38e1-49aa-b9e3-8526b837ac50",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -544,
+        256
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "1IKUCPxdx4t43QrY",
+          "name": "9router"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawOutput = $input.first().json.text || $input.first().json.output || '';\nconst telegramMsg = $('Telegram Trigger').first().json.message;\n\nlet parsed = {};\n\ntry {\n  // Ambil hanya karakter dari kurung kurawal pertama '{' sampai terakhir '}'\n  const jsonMatch = rawOutput.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    parsed = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error(\"Format JSON tidak ditemukan\");\n  }\n} catch (err) {\n  // Jika benar-benar bukan JSON, jadikan balasan biasa\n  parsed = {\n    type: \"general\",\n    reply: rawOutput || \"Halo! Kirimkan tugas atau jadwal yang ingin dicatat ya.\"\n  };\n}\n\nreturn {\n  json: {\n    ...parsed,\n    chatId: telegramMsg.chat.id,\n    rawInput: telegramMsg.text\n  }\n};"
+      },
+      "id": "08937037-7b2c-41f3-99d2-45f005768f24",
+      "name": "Parse AI JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "task",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "073203a2-fc04-4429-816b-e5cb90b2515f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Task"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6c9dbf29-80b5-4cf8-a14f-24fbcda60438",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "calendar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Calendar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cc4725ef-e8f0-482a-b29b-5833caf2a102",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "general",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "General"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5adb8144-afed-499f-b3db-17129f3d5f49",
+      "name": "Switch Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -64,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "task": "MDI2MDQyMDkzMzg3NTc4ODk2MTc6MDow",
+        "title": "={{ $json.title }}",
+        "additionalFields": {
+          "notes": "={{ $json.notes }}"
+        }
+      },
+      "id": "407c7b06-d4b5-4760-8bc7-398b9fc5640d",
+      "name": "Google Tasks",
+      "type": "n8n-nodes-base.googleTasks",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -112
+      ],
+      "credentials": {
+        "googleTasksOAuth2Api": {
+          "id": "SRIkqf9qUhEt2GoE",
+          "name": "Google Tasks account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse AI JSON').item.json.chatId }}",
+        "text": "=={{ \"✅ *Berhasil Ditambahkan ke Google Tasks!*\\n\\n📌 *Tugas:* \" + $('Parse AI JSON').item.json.title + ($('Parse AI JSON').item.json.notes ? \"\\n📝 *Catatan:* \" + $('Parse AI JSON').item.json.notes : \"\") + \"\\n\\n_Tersimpan di Google Tasks Anda._\" }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "2e48c222-d1dd-4e07-b52e-838312a60389",
+      "name": "Reply Task Sukses",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        -112
+      ],
+      "webhookId": "3da582ce-539c-4be3-b506-a931623e4db8",
+      "credentials": {
+        "telegramApi": {
+          "id": "g7vGom9p6RZTh9Zz",
+          "name": "rinakunbot_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list",
+          "cachedResultName": "primary"
+        },
+        "start": "={{ $json.startTime }}",
+        "end": "={{ $json.endTime }}",
+        "additionalFields": {
+          "attendees": [
+            "ridhwannadif752@gmail.com",
+            ""
+          ],
+          "description": "={{ $json.description || '' }}",
+          "summary": "={{ $json.title }}"
+        }
+      },
+      "id": "f3bfbf45-6bee-4bd0-8b21-530307530e0f",
+      "name": "Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        48
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "zhpW2SpaWXCZm4kh",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse AI JSON').item.json.chatId }}",
+        "text": "=📅 *Jadwal Berhasil Dibuat di Google Calendar!*\n\n📌 *Acara:* {{ $('Parse AI JSON').item.json.title }}\n⏰ *Waktu Mulai:* {{ $('Parse AI JSON').item.json.startTime }}\n🏁 *Waktu Selesai:* {{ $('Parse AI JSON').item.json.endTime }}\n📝 *Keterangan:* {{ $('Parse AI JSON').item.json.description || '-' }}\n\n_Tersinkronisasi otomatis dengan Google Calendar._",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "fb4c095e-4933-4ba9-934c-4aba16a885b3",
+      "name": "Reply Calendar Sukses",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        48
+      ],
+      "webhookId": "9bbf0e81-20fa-4334-b1fe-dc116787f6f0",
+      "credentials": {
+        "telegramApi": {
+          "id": "g7vGom9p6RZTh9Zz",
+          "name": "rinakunbot_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse AI JSON').item.json.chatId }}",
+        "text": "={{ $json.reply || 'Halo! Silakan kirimkan tugas (misal: Beli buah saat pulang) atau permintaan jadwal (misal: Buat jadwal photobooth tanggal 8 Juni).' }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "abeff29e-803b-4408-b08f-43b51f859406",
+      "name": "Reply Chat Biasa",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        240
+      ],
+      "webhookId": "c7418e11-05e8-4acc-a6cb-d93f0d40e4ef",
+      "credentials": {
+        "telegramApi": {
+          "id": "g7vGom9p6RZTh9Zz",
+          "name": "rinakunbot_bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Intent Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Intent Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Intent Extractor": {
+      "main": [
+        [
+          {
+            "node": "Parse AI JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI JSON": {
+      "main": [
+        [
+          {
+            "node": "Switch Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Router": {
+      "main": [
+        [
+          {
+            "node": "Google Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Chat Biasa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        []
+      ]
+    },
+    "Google Tasks": {
+      "main": [
+        [
+          {
+            "node": "Reply Task Sukses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Reply Calendar Sukses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "c0121d93-d69e-436d-bb09-a412841f320d",
+  "activeVersionId": "c0121d93-d69e-436d-bb09-a412841f320d",
+  "versionCounter": 61,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-09-03T11:41:55.388Z",
+      "createdAt": "2026-09-03T11:41:55.388Z",
+      "role": "workflow:owner",
+      "workflowId": "rkLE3jrXPDJs8WT4",
+      "projectId": "iuSJ1cN9aQjYBNiA",
+      "project": {
+        "updatedAt": "2026-08-26T17:54:19.818Z",
+        "createdAt": "2026-08-26T17:52:06.798Z",
+        "id": "iuSJ1cN9aQjYBNiA",
+        "name": "rinakun rinakun <ridhwannadif685@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "d6c6facd-21ab-49b1-af80-61c4c8601347"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Version c0121d93",
+    "description": ""
+  }
+}
