@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-03T12:41:07.475Z",
+  "updatedAt": "2026-09-03T13:17:23.863Z",
   "createdAt": "2026-09-03T11:41:55.388Z",
   "id": "rkLE3jrXPDJs8WT4",
   "name": "Telegram - Google Tasks & Google Calendar Bot",
@@ -237,8 +237,7 @@
         "end": "={{ $json.endTime }}",
         "additionalFields": {
           "attendees": [
-            "ridhwannadif752@gmail.com",
-            ""
+            "ridhwannadif752@gmail.com"
           ],
           "description": "={{ $json.description || '' }}",
           "summary": "={{ $json.title }}"
@@ -413,9 +412,9 @@
   },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "c0121d93-d69e-436d-bb09-a412841f320d",
-  "activeVersionId": "c0121d93-d69e-436d-bb09-a412841f320d",
-  "versionCounter": 61,
+  "versionId": "afecc360-c547-42c5-84da-efdaff4ac4bf",
+  "activeVersionId": "afecc360-c547-42c5-84da-efdaff4ac4bf",
+  "versionCounter": 62,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "tags": [],
@@ -440,7 +439,7 @@
     }
   ],
   "versionMetadata": {
-    "name": "Version c0121d93",
+    "name": "Version afecc360",
     "description": ""
   }
 }
