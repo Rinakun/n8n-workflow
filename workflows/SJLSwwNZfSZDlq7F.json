@@ -1,25 +1,243 @@
 {
-  "updatedAt": "2026-09-01T06:07:08.155Z",
+  "updatedAt": "2026-09-07T13:04:54.869Z",
   "createdAt": "2026-09-01T06:07:08.155Z",
   "id": "SJLSwwNZfSZDlq7F",
-  "name": "Rangkum",
+  "name": "Wazuh Alert Summary (Python Bridge Version)",
   "description": null,
-  "active": false,
+  "active": true,
   "isArchived": false,
-  "nodes": [],
-  "connections": {},
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rangkum-wazuh",
+        "options": {}
+      },
+      "id": "e15275dd-3bfe-49e7-a1c2-cbad08b41360",
+      "name": "Internal Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        736
+      ],
+      "webhookId": "rangkum-wazuh-internal"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil payload dari trigger Webhook\nlet inputData = $input.first().json;\nlet payload = inputData.body || inputData;\n\n// Deteksi penumpukan struktur JSON dari Python (nested body)\nif (payload.body && payload.body.application_id) {\n    payload = payload.body;\n}\n\nconst options = payload.data?.options || [];\n\nlet satuan = 'd';\nlet angka = 1;\nlet min_level = 0;\nlet max_level = 15;\n\nfor (const opt of options) {\n  if (opt.name === 'satuan_waktu') satuan = opt.value;\n  if (opt.name === 'angka_waktu') angka = parseInt(opt.value);\n  if (opt.name === 'level_minimal') min_level = parseInt(opt.value);\n  if (opt.name === 'level_maksimal') max_level = parseInt(opt.value);\n}\n\n// Keamanan filter\nif (angka < 1) angka = 1;\nif (min_level < 0) min_level = 0;\nif (max_level > 15) max_level = 15;\nif (min_level > max_level) {\n    let temp = min_level; min_level = max_level; max_level = temp;\n}\n\nconst time_query = `${angka}${satuan}`;\nconst satuan_label = satuan === 'h' ? 'Jam' : 'Hari';\nconst label_waktu = `${angka} ${satuan_label} Terakhir`;\nconst label_level = (min_level === 0 && max_level === 15) ? \"Semua Level\" : `Level ${min_level} - ${max_level}`;\n\nreturn [{\n  json: {\n    app_id: payload.application_id || \"\",\n    token: payload.token || \"\",\n    time_query: time_query,\n    label_waktu: label_waktu,\n    min_level: min_level,\n    max_level: max_level,\n    label_level: label_level\n  }\n}];"
+      },
+      "id": "0036ab7f-1f26-408a-a09e-b394ae1e46e0",
+      "name": "Parse Options",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://192.168.1.8:9200/wazuh-alerts-*/_search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"size\": 500,\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\n          \"range\": {\n            \"timestamp\": {\n              \"gte\": \"now-{{ $json.time_query }}\"\n            }\n          }\n        },\n        {\n          \"range\": {\n            \"rule.level\": {\n              \"gte\": {{ $json.min_level }},\n              \"lte\": {{ $json.max_level }}\n            }\n          }\n        }\n      ]\n    }\n  },\n  \"sort\": [\n    { \"rule.level\": { \"order\": \"desc\" } },\n    { \"timestamp\": { \"order\": \"desc\" } }\n  ]\n}",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "timeout": 30000
+        }
+      },
+      "id": "1f6b5fdb-6762-4dc0-b005-d5d415474e26",
+      "name": "Query Wazuh Indexer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2480,
+        736
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "zoZFRdJlYozlfuq4",
+          "name": "wazuhaccount"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst hits = (response.hits && response.hits.hits) ? response.hits.hits.map(h => h._source) : [];\n\nlet counts = { critical: 0, high: 0, medium: 0, low: 0, total: hits.length };\nlet ruleSummary = {}; let ipSummary = {}; let agentSummary = {};\nlet sampleHighAlerts = []; let sampleMedAlerts = [];\n\nhits.forEach(alert => {\n  const lvl = alert.rule?.level || 0;\n  const ruleId = alert.rule?.id || \"unknown\";\n  const ruleDesc = alert.rule?.description || \"No description\";\n  const agentName = alert.agent?.name || \"Unknown Agent\";\n  const agentIp = alert.agent?.ip || \"-\";\n  const srcIp = alert.data?.srcip || alert.srcip || null;\n\n  if (lvl >= 12) counts.critical++;\n  else if (lvl >= 8) counts.high++;\n  else if (lvl >= 4) counts.medium++;\n  else counts.low++;\n\n  const ruleKey = `Rule ${ruleId}: ${ruleDesc}`;\n  ruleSummary[ruleKey] = (ruleSummary[ruleKey] || 0) + 1;\n\n  const agentKey = `${agentName} (${agentIp})`;\n  agentSummary[agentKey] = (agentSummary[agentKey] || 0) + 1;\n\n  if (srcIp && srcIp !== \"-\" && srcIp !== \"127.0.0.1\") {\n    ipSummary[srcIp] = (ipSummary[srcIp] || 0) + 1;\n  }\n\n  if (lvl >= 8 && sampleHighAlerts.length < 15) {\n    sampleHighAlerts.push({ timestamp: alert.timestamp, rule_id: ruleId, level: lvl, description: ruleDesc, agent: `${agentName} (${agentIp})`, srcip: srcIp || \"N/A\" });\n  } else if (lvl >= 4 && lvl < 8 && sampleMedAlerts.length < 10) {\n    sampleMedAlerts.push({ timestamp: alert.timestamp, rule_id: ruleId, level: lvl, description: ruleDesc, agent: `${agentName} (${agentIp})`, srcip: srcIp || \"N/A\" });\n  }\n});\n\nreturn [{\n  json: {\n    counts,\n    topRules: Object.entries(ruleSummary).sort((a, b) => b[1] - a[1]).slice(0, 5),\n    topIps: Object.entries(ipSummary).sort((a, b) => b[1] - a[1]).slice(0, 5),\n    topAgents: Object.entries(agentSummary).sort((a, b) => b[1] - a[1]).slice(0, 5),\n    sampleHighAlerts,\n    sampleMedAlerts\n  }\n}];"
+      },
+      "id": "a181590a-8c58-447e-973e-5709296736c7",
+      "name": "Aggregate & Filter Logs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2704,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Kamu adalah seorang Senior SOC Security Analyst. Analisis data keamanan Wazuh SIEM berikut. \nData ini merupakan filter untuk: {{ $('Parse Options').item.json.label_waktu }} dengan prioritas {{ $('Parse Options').item.json.label_level }}.\n\nStatistik Ringkas:\n- Total Alert: {{ $json.counts.total }}\n- Critical (Level 12+): {{ $json.counts.critical }}\n- High (Level 8-11): {{ $json.counts.high }}\n- Medium (Level 4-7): {{ $json.counts.medium }}\n- Low (Level 0-3): {{ $json.counts.low }}\n\nTop Rule Terdeteksi:\n{{ JSON.stringify($json.topRules) }}\n\nTop Target / Agent:\n{{ JSON.stringify($json.topAgents) }}\n\nTop Attacker IP (SrcIP):\n{{ JSON.stringify($json.topIps) }}\n\nSampel Alert PRIORITAS TINGGI (dalam rentang filter):\n{{ JSON.stringify($json.sampleHighAlerts) }}\n\nSampel Alert PRIORITAS MENENGAH (dalam rentang filter):\n{{ JSON.stringify($json.sampleMedAlerts) }}\n\n---\nINSTRUKSI OUTPUT:\nBuat ringkasan eksekutif menggunakan Markdown Discord.\n\n📊 **Rangkuman Keamanan ({{ $('Parse Options').item.json.label_waktu }})**\nTotal {{ $json.counts.total }} log | Critical: {{ $json.counts.critical }} | High: {{ $json.counts.high }} | Medium: {{ $json.counts.medium }} | Low: {{ $json.counts.low }}\nStatus: [Tuliskan status 1 kalimat berdasarkan data log ini]\n\n🚨 **Temuan Tertinggi**\n[Sebutkan frekuensi kejadian, Rule ID dan Deskripsi dalam backtick code format `...`]\n• ⏰ [Rentang waktu atau tanggal kejadian penting]\n• 🎯 Agent: **[Nama Agent & IP]**\n• 🌐 SrcIP penyerang: **[IP penyerang jika ada]**\n(Jika tidak ada alert signifikan di filter ini, sebutkan \"Terpantau aman pada filter ini\")\n\n⚠️ **Temuan Lainnya**\n• Rule [ID]: `[Deskripsi]` - [jumlah kejadian]. [Indikasi ringkas]\n\n🔍 **Analisis Pola Serangan**\n[Paragraf analisa analitis mengenai taktik penyerang, misal Fuzzing / Brute Force, dan potensinya]\n\n✅ **Aksi Rekomendasi**\n1. **[Tindakan 1]**: [Detail mitigasi]\n2. **[Tindakan 2]**: [Detail mitigasi]\n\nJANGAN sertakan salam. Langsung berikan format di atas."
+      },
+      "id": "7ec01fd3-0b85-474e-a059-e53e0d652c88",
+      "name": "AI SOC Analyst (LLM Chain)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        2928,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "skripsi",
+          "mode": "list",
+          "cachedResultName": "skripsi"
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "e1e6926f-04d3-4411-af7e-2be9f90147cf",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2928,
+        960
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "1IKUCPxdx4t43QrY",
+          "name": "9router"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/webhooks/{{ $('Parse Options').item.json.app_id }}/{{ $('Parse Options').item.json.token }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  JSON.stringify({\n    embeds: [\n      {\n        title: `📊 Rangkuman Alert Wazuh — ${$('Parse Options').item.json.label_waktu}`,\n        color: 3092790,\n        description: $json.text,\n        fields: [\n          {\n            name: \"🔴 Critical\",\n            value: $('Aggregate & Filter Logs').item.json.counts.critical.toString(),\n            inline: true\n          },\n          {\n            name: \"🟠 High\",\n            value: $('Aggregate & Filter Logs').item.json.counts.high.toString(),\n            inline: true\n          },\n          {\n            name: \"🟡 Medium\",\n            value: $('Aggregate & Filter Logs').item.json.counts.medium.toString(),\n            inline: true\n          },\n          {\n            name: \"🟢 Low\",\n            value: $('Aggregate & Filter Logs').item.json.counts.low.toString(),\n            inline: true\n          },\n          {\n            name: \"📝 Total\",\n            value: $('Aggregate & Filter Logs').item.json.counts.total.toString(),\n            inline: true\n          }\n        ],\n        footer: {\n          text: `Filter: ${$('Parse Options').item.json.label_level} • Wazuh Bot • ` + $now.setZone('Asia/Jakarta').toFormat('dd/MM/yyyy HH:mm') + \" WIB\"\n        }\n      }\n    ]\n  })\n}}",
+        "options": {}
+      },
+      "id": "84ba99dd-0894-4b14-b418-9b5326253601",
+      "name": "Send Discord Rich Embed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3200,
+        736
+      ]
+    }
+  ],
+  "connections": {
+    "Internal Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Options",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Options": {
+      "main": [
+        [
+          {
+            "node": "Query Wazuh Indexer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Wazuh Indexer": {
+      "main": [
+        [
+          {
+            "node": "Aggregate & Filter Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate & Filter Logs": {
+      "main": [
+        [
+          {
+            "node": "AI SOC Analyst (LLM Chain)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI SOC Analyst (LLM Chain)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI SOC Analyst (LLM Chain)": {
+      "main": [
+        [
+          {
+            "node": "Send Discord Rich Embed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
   "staticData": null,
-  "meta": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
   "nodeGroups": [],
   "pinData": {},
-  "versionId": "2d37e0d5-5577-435d-9e72-3a63d6f81e25",
-  "activeVersionId": null,
-  "versionCounter": 1,
-  "triggerCount": 0,
+  "versionId": "1c57466b-147e-4abd-9809-d7e5dace179f",
+  "activeVersionId": "1c57466b-147e-4abd-9809-d7e5dace179f",
+  "versionCounter": 24,
+  "triggerCount": 1,
   "sourceWorkflowId": null,
   "tags": [],
   "shared": [
@@ -43,7 +261,7 @@
     }
   ],
   "versionMetadata": {
-    "name": null,
-    "description": null
+    "name": "Version 1c57466b",
+    "description": ""
   }
 }
